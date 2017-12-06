@@ -51,7 +51,7 @@ def get_hashtag(fname):
 			name.append(h)
 	label_unique = list(set(name))
 	
-	for i in range(0,500):
+	for i in range(0,len(label_unique)):
 		x_temp = []
 		y_temp = []
 		label = label_unique[i]
