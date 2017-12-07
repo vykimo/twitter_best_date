@@ -23,7 +23,7 @@ def get_hoursdays(fname):
 			
 	# Part 1 : Hour repartition
 	plt.figure(1)
-	plt.hist(x1, 100, normed=1, facecolor='b', alpha=0.5)
+	plt.hist(x1, 100, normed=1, facecolor='green', alpha=0.5)
 	plt.title("Hours repartition")
 	plt.xlabel('Hours')
 	plt.ylabel('Repartition')
@@ -31,7 +31,7 @@ def get_hoursdays(fname):
 
 	# Part 2 : hours pop		
 	plt.figure(2)
-	plt.plot(x1,y,'.')
+	plt.plot(x1,y,'.',color='green')
 	plt.title("Hours popularity")
 	plt.xlabel('Hours')
 	plt.ylabel('Popularity')
@@ -55,7 +55,7 @@ def get_hoursdays(fname):
 	
 	# Part 3 : Weekday repartition
 	plt.figure(3)
-	plt.hist(x2, 100, normed=1, facecolor='b', alpha=0.5)
+	plt.hist(x2, 100, normed=1, facecolor='orange', alpha=0.5)
 	plt.title("Weekday repartition")
 	plt.xlabel('Weekday')
 	plt.ylabel('Repartition')
@@ -63,7 +63,21 @@ def get_hoursdays(fname):
 
 	# Part 4 : Weekday pop		
 	plt.figure(4)
-	plt.plot(x2,y,'.')
+	
+	label_unique = list(set(x2))
+	
+	total = []
+	for i in range(0,len(label_unique)):	
+		x_total = 0
+		x_count = 0
+		for j in range(0,len(x2)):
+			if label_unique[i] == x2[j]:
+				x_total += y[j]
+				x_count += 1
+		total.append(x_total/x_count)
+	
+	plt.plot(total,'x-')
+	plt.plot(x2,y,'.',color='orange')
 	plt.title("Weekday popularity")
 	plt.xlabel('Weekday')
 	plt.ylabel('Popularity')
