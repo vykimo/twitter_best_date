@@ -53,4 +53,4 @@ def get_all_tweets(screen_name,consumer_key,consumer_secret,access_token,access_
 		f.write(json.dumps(outtweets))
 	pass
 	
-	return fname
+	return fname,len(alltweets)
