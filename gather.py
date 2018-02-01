@@ -5,47 +5,61 @@ import json
 from datetime import datetime
 from dateutil import parser
 import re
+import os
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Normalize a json.')
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('-f, --file', dest='file', action='store', help='file with twitter accounts')
-    parser.add_argument('-m, --m', dest='max', action='store_true', help='maximum to gather')
+    parser.add_argument('-m, --m', dest='max', action='store', type=int, help='maximum to gather')
     return parser.parse_args()
 
 
 def main(run_args):
-
-	if run_args.file:
-		accounts = open(run_args.file)
+	total_hashtags = 0
+	without_hashtags = 0
+	tweets = []
+	for element in os.listdir('data/datasets'):
+		if element.endswith('_tweets.json'):
 		
-		total_hashtags = 0
-		
-		tweets = []
-		
-		for account in accounts:
-		
+			user_tweets = json.load(open('data/datasets/' + element))
+			account_name = element.replace("_tweets.json","");
+			temp_without_hashtags = 0
 			temp_total_hashtags = 0
-			account_name = account.strip('\n');
-			print("\n### Get hashtags from : "+account_name+" ###")
-	
-			data = json.load(open('data\%s_tweets_normalized.json' % account_name))
+			print("### Get hashtags from : "+account_name+" ###")
 			
-			tweets.extend(data)
+			for t in user_tweets:
+				hour = parser.parse(t['date'])	
+				
+				# parse hashtags
+				hashtag = []
+				if t['hashtags']:
+					for h in t['hashtags']:
+						if re.match("^[a-zA-Z0-9àèìòùÀÈÌÒÙáéíóúýÁÉÍÓÚÝâêîôûÂÊÎÔÛãñõÃÑÕäëïöüÿÄËÏÖÜŸçÇßÆæœ_-]*$", h):
+							temp_total_hashtags += 1
+							hashtag.append(h)					
+				else:
+					temp_without_hashtags += 1
+				tweets.append({'user': account_name, 'weekday': (int(hour.strftime('%w'))), 'hour':(hour.strftime('%H:%M')), 'hashtag': hashtag, 'score': (t['rt'] * 2 + t['fav'])})
 			
-			temp_total_hashtags = len(data)
+			print("Number of Tweets : "+ str(len(user_tweets)))
+			print("Number of tweets without hashtags : "+ str(temp_without_hashtags))
+			print("Number of hashtags : "+ str(temp_total_hashtags))
 			
-			print("\n\nNumber of hashtags : "+ str(temp_total_hashtags))
+			# Update final counter
 			total_hashtags += temp_total_hashtags
+			without_hashtags += temp_without_hashtags
+			
 			if run_args.max and total_hashtags > run_args.max:
 				break
+
+	filename = 'data/gathered/gathering_' +str(len(tweets))+ '_'  +str(total_hashtags)+ '-hashtags_tweets.json'
+	with open(filename, 'w') as outfile:
+		json.dump(tweets, outfile)
 		
-		fname = 'data\gathering_%s_tweets.data' % str(total_hashtags)
-		with open(fname, 'w') as f:
-			for tweet in tweets:
-				f.write(tweet['hashtag']+","+str(tweet['weekday'])+","+tweet['hour']+","+str(tweet['score'])+"\n")
-		pass
-		print("=======================\n\nTotal hashtag : "+ str(total_hashtags))
+	print("\n=======================")
+	print("Number of tweets : " + str(len(tweets)))
+	print("With hashtags : "+ str(len(tweets) - without_hashtags) + " ("+str(round((len(tweets) - without_hashtags)*100/len(tweets),2))+"%)")
+	print("Without hashtags : "+ str(without_hashtags) + " ("+str(round(without_hashtags*100/len(tweets),2))+"%)")
+	print("Total hashtag : "+ str(total_hashtags)+ " ( mean value : "+str(round(total_hashtags*100/len(tweets),2))+"%)")
 
 if __name__ == "__main__":
     args = parse_arguments()

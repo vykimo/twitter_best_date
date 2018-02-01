@@ -27,7 +27,6 @@ def main(run_args):
 		for account in data:
 			account_name = account.strip('\n');
 			if account_name != "" :
-				print("\n### Crawl last tweets from : "+account_name+" ###")
 				[fname, number] = get_all_tweets(account_name,config.consumer_key,config.consumer_secret,config.access_token,config.access_secret)
 				total += number
 		print("\n\nTotal tweets : "+ str(total))
