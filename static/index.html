@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="X-UA-Compatible" content="ie=edge">
+        <title>predict.twitter</title>
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+        <link rel="stylesheet" type="text/css" href="static/css/style.css">
+    </head>
+    <body>
+		<header>
+            <h1 class="title">Predict Tweet Best Date</h1>
+			<img src="static/images/twitter-logo.jpg"/>
+		</header>
+        <div class="container">
+			<div class="login">
+				<h2>Login</h2>
+				<div class="login-form">
+					<span class="search-icon">
+					  <input id="search-input" type="text" placeholder="Search Twitter Account" >
+					  <img id="magnifier" src="static/images/magnifier.svg">
+					</span>
+				</div>
+				<div id="login-loading">					
+					<img class="Profile imground" src="https://abs.twimg.com/sticky/default_profile_images/default_profile_normal.png">
+					<div class="loader"></div>
+				</div>
+			</div>
+            <div class="post-wrapper">
+				<div class="tweet-box">
+					<img class="Avatar imground" src="https://abs.twimg.com/sticky/default_profile_images/default_profile_normal.png">
+					<form>
+						<TEXTAREA id='post-input' name="post" rows=1 cols=40  placeholder="What's happening?"></TEXTAREA>
+						<div class="TweetBoxToolbar"> 
+							<button id="predictscore" type="button">
+								<span class="button-text tweeting-text">
+									Predict Score
+								</span>
+							</button>
+							<button id="proposedate" type="button">
+								<span class="button-text tweeting-text">
+									Propose Date
+								</span>
+							</button>
+						</div>
+					</form>
+				</div>
+            </div>
+		</div>
+		
+		<div class="wrapper">
+			<div class="dot"></div>
+		</div>
+		
+		<div id="results">
+			<canvas id="Charts" width="400" height="200"></canvas>
+        </div>
+		
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.bundle.min.js"></script>
+        <script src="static/js/index.js"></script>
+    </body>
+</html>

@@ -14,7 +14,14 @@ class Twitter:
 		auth.set_access_token(Twitter.ACCESS_TOKEN, Twitter.ACCESS_SECRET)
 		self.api = tweepy.API(auth, wait_on_rate_limit=True)
 
-		
+	def get_user_infos(self, screen_name):
+		user = None
+		try:
+			user = self.api.get_user(screen_name)
+		except tweepy.TweepError:
+			print("User not found...")
+		return user
+	
 	#Twitter only allows access to a users most recent 3240 tweets with this method
 	def get_tweets_from_user(self, screen_name):
 	
@@ -29,23 +36,12 @@ class Twitter:
 			#make initial request for most recent tweets (200 is the maximum allowed count)
 			new_tweets = self.api.user_timeline(screen_name = screen_name, count=200, exclude_replies=True)
 			
-			#save most recent tweets
-			alltweets.extend(new_tweets)
+			if new_tweets:
 			
-			#if no tweets
-			if len(alltweets) < 1:
-				return []
-			
-			#save the id of the oldest tweet less one
-			oldest = alltweets[-1].id - 1
-			
-			#keep grabbing tweets until there are no tweets left to grab
-			while len(new_tweets) > 0:
-				
-				print ("%s tweets retrieved" % (len(new_tweets)))
-			
-				#all subsiquent requests use the max_id param to prevent duplicates
-				new_tweets = self.api.user_timeline(screen_name = screen_name,count=200,max_id=oldest, exclude_replies=True)
+				followers_count = new_tweets[0]._json['user']['followers_count']
+				friends_count 	= new_tweets[0]._json['user']['friends_count']
+				listed_count 	= new_tweets[0]._json['user']['listed_count']
+				statuses_count 	= new_tweets[0]._json['user']['statuses_count']
 				
 				#save most recent tweets
 				alltweets.extend(new_tweets)
@@ -53,24 +49,43 @@ class Twitter:
 				#if no tweets
 				if len(alltweets) < 1:
 					return []
-					
-				#update the id of the oldest tweet less one
+				
+				#save the id of the oldest tweet less one
 				oldest = alltweets[-1].id - 1
-			
-			# Normalize tweets
-			for tweet in alltweets:
-			
-				t = tweet._json
-				hashtags = []
 				
-				for hashtag in tweet.entities['hashtags']:
-					hashtags.extend([hashtag['text']])
+				#keep grabbing tweets until there are no tweets left to grab
+				while len(new_tweets) > 0:
 					
-				to_insert = [{'id':tweet.id_str, 'date':str(t['created_at']), 'text':tweet.text, 'rt': tweet.retweet_count, 'fav': tweet.favorite_count, 'hashtags':hashtags}]
+					print ("%s tweets retrieved" % (len(new_tweets)))
 				
-				outtweets.extend(to_insert)
+					#all subsiquent requests use the max_id param to prevent duplicates
+					new_tweets = self.api.user_timeline(screen_name = screen_name, count=200, max_id=oldest, exclude_replies=True)
+					
+					#save most recent tweets
+					alltweets.extend(new_tweets)
+					
+					#if no tweets
+					if len(alltweets) < 1:
+						return []
+						
+					#update the id of the oldest tweet less one
+					oldest = alltweets[-1].id - 1
 				
-			print ("= %s tweets downloaded" % (len(outtweets)))
+				# Normalize tweets
+				for tweet in alltweets:
+				
+					t = tweet._json
+					hashtags = []
+					
+					if t['lang'] == "en" or t['lang'] == "en-gb":
+						for hashtag in tweet.entities['hashtags']:
+							hashtags.extend([hashtag['text']])
+							
+						to_insert = [{'id':tweet.id_str, 'date':str(t['created_at']), 'text':tweet.text, 'rt': tweet.retweet_count, 'fav': tweet.favorite_count, 'hashtags':hashtags, 'followers_count':followers_count, 'friends_count':friends_count, 'listed_count':listed_count, 'statuses_count':statuses_count}]
+						
+						outtweets.extend(to_insert)
+					
+				print ("= %s tweets downloaded" % (len(outtweets)))
 			
 		except tweepy.TweepError:
 			print("Failed to retrieve tweets, Skipping...")
@@ -86,7 +101,8 @@ class Twitter:
 		followers = []
 		try:
 			for user in self.api.followers(screen_name=screen_name, count=200):
-				followers.append(user.screen_name)
+				if user.lang == "en" or user.lang == "en-gb":
+					followers.append(user.screen_name)
 		except tweepy.TweepError:
 			print("Failed to find followers, Skipping...")
 		print("### " + str(len(followers)) + " followers found ###")
