@@ -74,4 +74,4 @@ def account():
     else:
         return Response(response="Query parameter 'screen_name' is missing.", status=400, mimetype='text/plain')
 		
-server.run(host='127.0.0.1', threaded=True)
+server.run(host='192.168.1.97', threaded=True)

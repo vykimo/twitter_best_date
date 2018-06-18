@@ -23,6 +23,10 @@ from gensim.models import Word2Vec
 from textblob import TextBlob
 import shutil
 from flask import Response
+import math
+import itertools
+import optunity
+import optunity.metrics
 
 from sklearn.model_selection import GridSearchCV
 
@@ -92,7 +96,7 @@ class Model:
 			
 			webdataset[d] = [[],[]]
 			
-			for m in range(0,1439,30):
+			for m in range(0,1439,60):
 				
 				X[0][1] = d
 				X[0][2] = m
@@ -116,7 +120,7 @@ class Model:
 			
 		webdataset['max'] = res
 		webdataset['labels'] = []
-		for m in range(0,1439,30):
+		for m in range(0,1439,60):
 			webdataset['labels'].append(self.mins_to_label(m))
 		
 		with open("data/publish/webdataset.json", 'w') as f:
@@ -150,8 +154,14 @@ class Model:
 			else:
 				break
 	
-	def train(self, file, tuning, cache, save):
+	def train(self, file, tuning, cache, save, svr):
 		
+		if svr:
+			self.svr = True
+			print("== SVR mode ==")
+		else:
+			self.svr = False
+			
 		if tuning:
 			self.tuning = int(tuning)
 		else:
@@ -170,7 +180,10 @@ class Model:
 		self.train, self.test = train_test_split(self.datas, test_size=0.33, shuffle=True, random_state=42)
 		
 		# Format data
-		self.test_y, self.train_y = [[row['score'], row['score2']] for row in self.test], [[row['score'], row['score2']] for row in self.train]
+		if self.svr:
+			self.test_y, self.train_y = [row['score'] for row in self.test], [row['score'] for row in self.train]
+		else:
+			self.test_y, self.train_y = [[row['score'], row['score2']] for row in self.test], [[row['score'], row['score2']] for row in self.train]
 		self.test_X, self.train_X = [[row['hashtag'], row['weekday'], row['hour'], row['followers_count'], row['friends_count'], row['listed_count'], row['statuses_count'], row['text'], 0, 0, 0, 0, 0, 0, 0, 0, 0] for row in self.test], [[row['hashtag'], row['weekday'], row['hour'], row['followers_count'], row['friends_count'], row['listed_count'], row['statuses_count'], row['text'], 0, 0, 0, 0, 0, 0, 0, 0, 0] for row in self.train]
 		self.names = ['hashtag', 'weekday', 'hour', 'followers_count', 'friends_count', 'listed_count', 'statuses_count', 'text', 'quote', 'link', '...', '!', '?', '@', 'upper', 'polarity', 'subjectivity' ]
 		
@@ -186,23 +199,49 @@ class Model:
 		
 		if self.tuning == 1:
 			print("Tuning model")
-			sample_leaf_options = [1,5,10,50,100,200,500]
-			for leaf_size in sample_leaf_options :
-				print(":: leaf_size = " + str(leaf_size))
-				self.min_samples_leaf = leaf_size
-				self.cache_model()
-				
-				print("Predict model")
-				self.predictions = self.regr_rf.predict(self.test_X)
-				
-				print("Feature importance : ")
-				print(sorted(zip(map(lambda x: round(x, 4), self.regr_rf.feature_importances_), self.names), reverse=True))
-				self.test_score_rf = mean_squared_error(self.test_y, self.predictions)
-				print('=Model Test MSE: %.3f' % self.test_score_rf)
-				
-				self.test_score = self.test_score_rf
-				
-				self.evaluation()
+			if self.svr:
+				outer_cv = optunity.cross_validated(x=self.train_X, y=self.train_y, num_folds=3)
+				def compute_mse_rbf_tuned(x_train, y_train, x_test, y_test):
+					"""Computes MSE of an SVR with RBF kernel and optimized hyperparameters."""
+
+					# define objective function for tuning
+					@optunity.cross_validated(x=x_train, y=y_train, num_iter=2, num_folds=5)
+					def tune_cv(x_train, y_train, x_test, y_test, C, gamma):
+						print("tune_cv model C="+str(C)+", gamma="+str(gamma))
+						model = SVR(C=C, gamma=gamma).fit(x_train, y_train)
+						print("tune_cv model fit")
+						predictions = model.predict(x_test)
+						return optunity.metrics.mse(y_test, predictions)
+
+					# optimize parameters
+					optimal_pars, _, _ = optunity.minimize(tune_cv, 150, C=[1, 100], gamma=[0, 50])
+					print("optimal hyperparameters: " + str(optimal_pars))
+
+					tuned_model = SVR(**optimal_pars).fit(x_train, y_train)
+					predictions = tuned_model.predict(x_test)
+					return optunity.metrics.mse(y_test, predictions)
+
+				# wrap with outer cross-validation
+				compute_mse_rbf_tuned = outer_cv(compute_mse_rbf_tuned)
+				compute_mse_rbf_tuned()
+			else:
+				sample_leaf_options = [1,5,10,50,100,200,500]
+				for leaf_size in sample_leaf_options :
+					print(":: leaf_size = " + str(leaf_size))
+					self.min_samples_leaf = leaf_size
+					self.cache_model()
+					
+					print("Predict model")
+					self.predictions = self.regr_rf.predict(self.test_X)
+					
+					print("Feature importance : ")
+					print(sorted(zip(map(lambda x: round(x, 4), self.regr_rf.feature_importances_), self.names), reverse=True))
+					self.test_score_rf = mean_squared_error(self.test_y, self.predictions)
+					print('=Model Test MSE: %.3f' % self.test_score_rf)
+					
+					self.test_score = self.test_score_rf
+					
+					self.evaluation()
 				
 		elif self.tuning == 2:
 			print("Tuning model 2")
@@ -234,8 +273,9 @@ class Model:
 			print("Predict model")
 			self.predictions = self.regr_rf.predict(self.test_X)
 			
-			print("Feature importance : ")
-			print(sorted(zip(map(lambda x: round(x, 4), self.regr_rf.feature_importances_), self.names), reverse=True))
+			if not self.svr:
+				print("Feature importance : ")
+				print(sorted(zip(map(lambda x: round(x, 4), self.regr_rf.feature_importances_), self.names), reverse=True))
 			self.test_score_rf = mean_squared_error(self.test_y, self.predictions)
 			print('=Model Test MSE: %.3f' % self.test_score_rf)
 			
@@ -311,7 +351,11 @@ class Model:
 				print("** Baseline "+ str(i) +" OK")
 			else:
 				print("** Baseline "+ str(i) +" NOT OK")
-				
+			if self.svr:
+				temp = []
+				for d in self.predictions_baseline[i]['prediction']:
+					temp.append(d[0])
+				self.predictions_baseline[i]['prediction'] = temp
 			print('=Model-baselines '+ str(i) +' prediction Test MSE: %.3f' % mean_squared_error(self.predictions_baseline[i]['prediction'], self.predictions))
 
 	def cache_baseline(self):
@@ -329,10 +373,18 @@ class Model:
 				print('=Baseline '+str(i)+' = Test MSE: %.3f' % self.predictions_baseline[i]['score'])
 
 	def cache_model(self):
-		cache = self.cache_path + self.file.name.split('\\')[2].split('.')[0] + "-" + str(self.min_samples_leaf) + "_model.pkl"
+		if self.svr:
+			cache = self.cache_path + self.file.name.split('\\')[2].split('.')[0] + "-" + str(self.min_samples_leaf) + "_model_svr.pkl"
+		else:
+			cache = self.cache_path + self.file.name.split('\\')[2].split('.')[0] + "-" + str(self.min_samples_leaf) + "_model.pkl"
 		
 		if not os.path.exists(cache) or self.cache:
-			self.regr_rf = RandomForestRegressor(bootstrap=True, max_depth=self.max_depth, max_features=self.max_features, min_samples_leaf=self.min_samples_leaf, min_samples_split=self.min_samples_split, n_estimators=self.n_estimators, n_jobs=-1)
+			print("aaaaaaaa)")
+			if self.svr:
+				#self.regr_rf = SVR(kernel='rbf', C=1e3, gamma=5e-10)
+				self.regr_rf = SVR(kernel='rbf', C=99.95588, gamma=22.38053)
+			else:
+				self.regr_rf = RandomForestRegressor(bootstrap=True, max_depth=self.max_depth, max_features=self.max_features, min_samples_leaf=self.min_samples_leaf, min_samples_split=self.min_samples_split, n_estimators=self.n_estimators, n_jobs=-1)
 			self.regr_rf.fit(self.train_X, self.train_y)		
 			joblib.dump(self.regr_rf, cache)
 		else:
@@ -385,7 +437,6 @@ class Model:
 		self.W2Vmodel[0] = Word2Vec(sentences, size=100, window=5, min_count=5, workers=4, hs=1, negative=0)
 		self.W2Vmodel[1] = Word2Vec(hashtags, size=100, window=5, min_count=1, workers=4, hs=1, negative=0)
 
-		
 	def normalize_dataset(self, X):
 	
 		def count_by_lambda(expression, word_array):

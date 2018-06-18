@@ -42,7 +42,8 @@ def main(run_args):
 							hashtag.append(h)					
 				else:
 					temp_without_hashtags += 1
-				tweets.append({'user': account_name, 'weekday': (int(hour.strftime('%w'))), 'hour':(hour.strftime('%H:%M')), 'hashtag': hashtag, 'score': (t['rt'] * 2 + t['fav']), 'score2': round(t['rt'] * 100 / t['followers_count'],4),'text': t['text'], 'followers_count':t['followers_count'], 'friends_count':t['friends_count'], 'listed_count':t['listed_count'], 'statuses_count':t['statuses_count']})
+				#tweets.append({'user': account_name, 'weekday': (int(hour.strftime('%w'))), 'hour':(hour.strftime('%H:%M')), 'hashtag': hashtag, 'score': (t['rt'] * 2 + t['fav']), 'score2': round(t['rt'] * 100 / t['followers_count'],4),'text': t['text'], 'followers_count':t['followers_count'], 'friends_count':t['friends_count'], 'listed_count':t['listed_count'], 'statuses_count':t['statuses_count']})
+				tweets.append({'user': account_name, 'weekday': (int(hour.strftime('%w'))), 'hour':(hour.strftime('%H:%M')), 'hashtag': hashtag, 'score': t['rt'], 'score2': round(t['rt'] * 100 / t['followers_count'],4),'text': t['text'], 'followers_count':t['followers_count'], 'friends_count':t['friends_count'], 'listed_count':t['listed_count'], 'statuses_count':t['statuses_count']})
 			
 			print("Number of Tweets : "+ str(len(user_tweets)))
 			print("Number of tweets without hashtags : "+ str(temp_without_hashtags))
@@ -55,7 +56,7 @@ def main(run_args):
 			if run_args.max and total_hashtags > run_args.max:
 				break
 
-	filename = 'data/gathered/gathering_' +str(len(tweets))+ '_'  +str(total_hashtags)+ '-texts_tweets.json'
+	filename = 'data/gathered/gathering_' +str(len(tweets))+ '_'  +str(total_hashtags)+ '-only_rt.json'
 	with open(filename, 'w') as outfile:
 		json.dump(tweets, outfile)
 		
