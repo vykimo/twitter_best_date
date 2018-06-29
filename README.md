@@ -45,11 +45,12 @@ A json file will be created in _data/gathered_ with datas ready for training.
 Create folders _./data/cache/_ and _./data/publish/_ in root.
 Run in console:
 ```
-python training.py -d data\gathered\gathering_xxx_xxx.json -save
+python training.py -d data\gathered\gathering_xxx_xxx.json -save -i -i -i -i
 ```
-Feature importance will be displayed.
-Baselines tests too.
-Then, model will be saved in _./data/publish/_.
+The 4 options -i corresponds of highest level of data set optimisation, you can remove them.  
+
+Feature importance will be displayed. Baselines tests too.  
+Thanks to -save option, model will be saved in _./data/publish/_.
 
 ## Running web server
 Run in console:
