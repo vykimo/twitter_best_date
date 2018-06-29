@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 import random
 import pickle
 from datetime import datetime
@@ -14,6 +15,8 @@ from sklearn.svm import SVR
 from sklearn.ensemble import RandomForestRegressor
 from baselines.baselines import Baselines
 from sklearn.metrics import roc_auc_score
+from sklearn.metrics import r2_score
+from sklearn.metrics import classification_report
 import calendar
 import json
 import os
@@ -149,7 +152,8 @@ class Model:
 			else:
 				break
 	
-	def train(self, file, tuning, cache, save, svr):
+	
+	def train(self, file, tuning, cache, save, svr, ignore):
 		
 		if svr:
 			self.svr = True
@@ -171,6 +175,46 @@ class Model:
 			
 		self.datas = json.load(self.file)
 		
+		if ignore and ignore > 0:
+			class_0 = 0
+			class_1 = 0
+			class_2 = 0
+			self.ignore = ignore
+			counter = list()
+			for i in range(0, len(self.datas)):
+				if self.datas[i]['score2'] > 300:
+					counter.append(i)
+					continue
+				if self.ignore > 1 and self.datas[i]['followers_count'] > 10000:
+					counter.append(i)
+					continue
+				if self.ignore > 2 and self.datas[i]['score'] > 20000:
+					counter.append(i)
+					continue
+				if self.ignore > 3:
+					if self.datas[i]['score2'] >= 200:
+						if class_2 > 30000:
+							counter.append(i)
+							continue
+						else:
+							class_2 += 1
+					elif self.datas[i]['score2'] >= 50:
+						if class_1 > 30000:
+							counter.append(i)
+							continue
+						else:
+							class_1 += 1
+					elif self.datas[i]['score2'] >= 0:
+						if class_0 > 30000:
+							counter.append(i)
+							continue
+						else:
+							class_0 += 1
+				
+			self.datas = [self.datas[i] for i in range(0, len(self.datas)) if i not in counter]
+			print(str(len(counter))+" aberrant values removed")
+		else:
+			self.ignore = 0
 		# Split data
 		self.train, self.test = train_test_split(self.datas, test_size=0.33, shuffle=True, random_state=42)
 		
@@ -273,11 +317,48 @@ class Model:
 				print(sorted(zip(map(lambda x: round(x, 4), self.regr_rf.feature_importances_), self.names), reverse=True))
 			self.test_score_rf = mean_squared_error(self.test_y, self.predictions)
 			print('=Model Test MSE: %.3f' % self.test_score_rf)
-			
 			self.test_score = self.test_score_rf
+			print('r2 = ')
+			print(r2_score(self.test_y, self.predictions, multioutput='raw_values'))
+			
+			classif = list()
+			classif_pred = list()
+			for i in range(0, len(self.test_y)):
+				if self.test_y[i][1] >= 200:
+					classif.append(2)
+				elif self.test_y[i][1] >= 50:
+					classif.append(1)		
+				elif self.test_y[i][1] >= 0:
+					classif.append(0)
+					
+			for i in range(0, len(self.predictions)):
+				if self.predictions[i][1] >= 200:
+					classif_pred.append(2)
+				elif self.predictions[i][1] >= 50:
+					classif_pred.append(1)		
+				elif self.predictions[i][1] >= 0:
+					classif_pred.append(0)
+			
+			target_names = ['class 0', 'class 1', 'class 2']
+			print(classification_report(classif, classif_pred, target_names=target_names))
+			
+			x = np.asarray(self.test_y)[:,0]
+			y = np.asarray(self.predictions)[:,0]
+			max = [np.amax(x), np.amax(y)]
+			x1 = [0, np.amax(max)]
+			plt.figure()
+			plt.plot(x, y, 'r+')
+			plt.plot(x1, x1)
+			plt.figure()
+			x = np.asarray(self.test_y)[:,1]
+			y = np.asarray(self.predictions)[:,1]
+			max = [np.amax(x), np.amax(y)]
+			x1 = [0, np.amax(max)]
+			plt.plot(x, y, 'g+')
+			plt.plot(x1, x1)
+			plt.show()
 			
 			self.evaluation()
-		
 				
 	def label_to_mins(self, label):
 		[hour, min] = label.split(":")	
@@ -371,10 +452,13 @@ class Model:
 		if self.svr:
 			cache = self.cache_path + self.file.name.split('\\')[2].split('.')[0] + "-" + str(self.min_samples_leaf) + "_model_svr.pkl"
 		else:
-			cache = self.cache_path + self.file.name.split('\\')[2].split('.')[0] + "-" + str(self.min_samples_leaf) + "_model.pkl"
+			cache = self.cache_path + self.file.name.split('\\')[2].split('.')[0] + "-" + str(self.min_samples_leaf) + "_model"
+			for i in range(0,self.ignore):
+				cache += "-i"
+			cache += ".pkl"
 		
 		if not os.path.exists(cache) or self.cache:
-			print("aaaaaaaa)")
+			print("(fit new model)")
 			if self.svr:
 				#self.regr_rf = SVR(kernel='rbf', C=1e3, gamma=5e-10)
 				self.regr_rf = SVR(kernel='rbf', C=99.95588, gamma=22.38053)
@@ -389,6 +473,8 @@ class Model:
 	def save_model(self):
 		save_date = str( datetime.now().isoformat(timespec='seconds').replace(":","")  )
 		
+		for i in range(0,self.ignore):
+			save_date += "-i"
 		# copy model
 		joblib.dump(self.regr_rf, self.publish_path + save_date +".model")
 		# copy w2v models
@@ -406,8 +492,14 @@ class Model:
 		
 	def cache_dataset(self):		
 		
-		cache_test = self.cache_path + self.file.name.split('\\')[2].split('.')[0] + "_test_X.pkl"
-		cache_train = self.cache_path + self.file.name.split('\\')[2].split('.')[0] + "_train_X.pkl"
+		cache_test = self.cache_path + self.file.name.split('\\')[2].split('.')[0] + "_test_X"
+		for i in range(0,self.ignore):
+			cache_test += "-i"
+		cache_test += ".pkl"
+		cache_train = self.cache_path + self.file.name.split('\\')[2].split('.')[0] + "_train_X"
+		for i in range(0,self.ignore):
+			cache_train += "-i"
+		cache_train += ".pkl"
 				
 		if not os.path.exists(cache_test) or self.cache:
 			self.test_X = self.normalize_dataset(self.test_X)	
