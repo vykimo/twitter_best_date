@@ -96,6 +96,12 @@ h3 {
 	margin-bottom: 6px;
 	color: #0199d9;
 }
+.TweetBoxToolbar h3 i {
+	position: absolute;
+	right: 0px;
+	font-size: 12px;
+	bottom: -11px;
+}
 .TweetBoxToolbar {
     text-align: right;
 	padding-top: 17px;

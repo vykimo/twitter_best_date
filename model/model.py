@@ -435,8 +435,10 @@ class Model:
 			print('=Model-baselines '+ str(i) +' prediction Test MSE: %.3f' % mean_squared_error(self.predictions_baseline[i]['prediction'], self.predictions))
 
 	def cache_baseline(self):
-		cache = self.cache_path + self.file.name.split('\\')[2].split('.')[0] + "-baselines.json"
-		
+		cache = self.cache_path + self.file.name.split('\\')[2].split('.')[0] + "-baselines"
+		for i in range(0,self.ignore):
+			cache += "-i"
+		cache += ".json"
 		if not os.path.exists(cache) or self.cache == 2:
 			self.train_baselines()
 			with open(cache, 'w') as f:

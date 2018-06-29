@@ -10,7 +10,7 @@ def parse_arguments():
     group.add_argument('-f, --file', dest='file', type=open, help='model.json')
     parser.add_argument('-c, --cache', dest='cache', action='count', help='do not use cache')
     parser.add_argument('-t, --tuning', dest='tuning', action='count', help='tuning model')
-    parser.add_argument('-i, --ignore', dest='ignore', action='count', help='ignore aberrant value')
+    parser.add_argument('-i, --ignore', dest='ignore', action='count', help='ignore aberrant value (from 1 to 4 level)')
     parser.add_argument('-save', dest='save', action='count', help='save model for publishing')
     parser.add_argument('-svr', dest='svr', action='count', help='use svr instead of rf')
     return parser.parse_args()

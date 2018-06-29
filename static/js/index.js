@@ -134,8 +134,16 @@ function requestBestDate() {
 function loadScore() {
 	const data = JSON.parse(this.responseText);
 	var results = $(".TweetBoxToolbar");
+	var ratio = Math.round(data[1])
+	var str = "<h3>Score of the current text : "+ Math.round(data[0]) + " "
+	if (ratio >= 200)
+		str += "<i style='color:green'>Very popular</i>"
+	else if (ratio >= 50)
+		str += "<i>Normal popularity</i>"
+	else if (ratio >= 0)
+		str += "<i style='color:red'>Not popular</i>"
 	results.children("h3").remove();
-	results.prepend( "<h3>Score of the current text : "+ Math.round(data[0]) +"</h3>" );	
+	results.prepend( str + "</h3>" );	
 	$(".TweetBoxToolbar button").prop('disabled', false); 
 	$(".tweet-box form .post").prop('disabled', false); 
 }
