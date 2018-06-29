@@ -1,3 +1,9 @@
 matplotlib
 wordcloud
 tweepy
+sklearn
+scipy
+gensim
+textblob
+flask
+optunity

@@ -17,14 +17,9 @@ from sklearn.metrics import roc_auc_score
 import calendar
 import json
 import os
-import emoji
 import re
 from gensim.models import Word2Vec
 from textblob import TextBlob
-import shutil
-from flask import Response
-import math
-import itertools
 import optunity
 import optunity.metrics
 
